@@ -1,6 +1,6 @@
 #!/usr/local/bin/python3
 #
-import downloadYahooFin
+import downloadDataFin
 import addFinancialParameters
 import preProcessData
 import trainLSTM
@@ -10,14 +10,13 @@ import buildChart
 
 import pandas as pd
 
-from time import sleep
 from os import path
 from os import mkdir
+from commonResources import *
 from os import getcwd
 from os import chdir
 from os import remove
 
-from shutil import copy
 
 
 def process_ticker(ticker):
@@ -30,7 +29,7 @@ def process_ticker(ticker):
     """
 
     # constants used to define the stage of the script
-    STATUS_DOWNLOAD = 1             # download financial info from yahoo (downloadYahooFin.py)
+    STATUS_DOWNLOAD = 1             # download financial info from yahoo (downloadDataFin.py)
     STATUS_ADD_PARAMETERS = 2       # add financial parameters (addFinancialParameters.py)
     STATUS_TRAINING = 3             # train the network
     STATUS_MERGE_DATA = 4           # merge the data with old processed data
@@ -57,22 +56,18 @@ def process_ticker(ticker):
     print('Start')
 
 
-
     # ticker : used for DOWNLOAD stage
     # interval for data download: used for DOWNLOAD stage
     interval = '1d'
 
     # features to use
-    FEATURE_COLUMNS = ['Open', 'High', 'Low', 'Close', 'Adj Close', 'Volume', 'MOM_1', 'MOM_3', 'MOM_5', 'MOM_10', 'MOM_20', 'ROC_2', 'ROC_5', 'ROC_10', 'ROC_20', 'ROC_40',
-                       'EMA_5', 'EMA_10', 'EMA_20', 'EMA_40', 'STDEV_3', 'STDEV_5', 'STDEV_8', 'STDEV_15',
-                       'dMOM_1', 'dMOM_3', 'dMOM_5', 'dMOM_10', 'dMOM_20', 'dROC_2', 'dROC_5', 'dROC_10', 'dROC_20', 'dROC_40',
-                       'dEMA_5', 'dEMA_10', 'dEMA_20', 'dEMA_40', 'dSTDEV_3', 'dSTDEV_5', 'dSTDEV_8', 'dSTDEV_15']
-    MINMAX_COLUMNS = ['Open', 'High', 'Low', 'Close', 'Adj Close', 'Volume', 'EMA_5', 'EMA_10', 'EMA_20', 'EMA_40', 'STDEV_3', 'STDEV_5', 'STDEV_8', 'STDEV_15']
-    STANDARD_COLUMNS = ['MOM_1', 'MOM_3', 'MOM_5', 'MOM_10', 'MOM_20', 'ROC_2', 'ROC_5', 'ROC_10', 'ROC_20', 'ROC_40',
-                        'dMOM_1', 'dMOM_3', 'dMOM_5', 'dMOM_10', 'dMOM_20', 'dROC_2', 'dROC_5', 'dROC_10', 'dROC_20', 'dROC_40',
+    FEATURE_COLUMNS = ['Open', 'High', 'Low', 'Close', 'Volume', 'MOM_1', 'MOM_3', 'MOM_5', 'MOM_10', 'MOM_20', 'ROC_2', 'ROC_5', 'ROC_10', 'ROC_20', 'ROC_40', 'EMA_5', 'EMA_10', 'EMA_20', 'EMA_40', 'STDEV_3', 'STDEV_5', 'STDEV_8',
+                       'STDEV_15', 'dMOM_1', 'dMOM_3', 'dMOM_5', 'dMOM_10', 'dMOM_20', 'dROC_2', 'dROC_5', 'dROC_10', 'dROC_20', 'dROC_40', 'dEMA_5', 'dEMA_10', 'dEMA_20', 'dEMA_40', 'dSTDEV_3', 'dSTDEV_5', 'dSTDEV_8', 'dSTDEV_15']
+    MINMAX_COLUMNS = ['Open', 'High', 'Low', 'Close', 'Volume', 'EMA_5', 'EMA_10', 'EMA_20', 'EMA_40', 'STDEV_3', 'STDEV_5', 'STDEV_8', 'STDEV_15']
+    STANDARD_COLUMNS = ['MOM_1', 'MOM_3', 'MOM_5', 'MOM_10', 'MOM_20', 'ROC_2', 'ROC_5', 'ROC_10', 'ROC_20', 'ROC_40', 'dMOM_1', 'dMOM_3', 'dMOM_5', 'dMOM_10', 'dMOM_20', 'dROC_2', 'dROC_5', 'dROC_10', 'dROC_20', 'dROC_40',
                         'dEMA_5', 'dEMA_10', 'dEMA_20', 'dEMA_40', 'dSTDEV_3', 'dSTDEV_5', 'dSTDEV_8', 'dSTDEV_15']
 
-    EPOCHS = [500]  # [100,200,300,400,500]       # 10, 11
+    EPOCHS = [500]  # [100,200,300,400,500]
     if int_forecast == FORECAST_5_DAYS:
         NETWORK_LEN = [48]
         # prediction samples
@@ -100,20 +95,17 @@ def process_ticker(ticker):
     SCALE = True
     TRAINING_LENGTH = 250       # one year
 
-    # create folders if they don't exist
-    if not path.isdir("data_in"):
-        # for data input (csv)
-        mkdir("data_in")
+    # create TEMP folder if they don't exist
     if not path.isdir("temp"):
         # for temporary use
         mkdir("temp")
 
     # download data and check if new data is available
-    str_data_in_file_name = path.join('data_in', f'{ticker}.csv')
     bln_new_data_available = True
     if int_status == STATUS_DOWNLOAD:
-        obj_download_data = downloadYahooFin.DownloadFinancialData()
-        bln_new_data_available = obj_download_data.download_data(ticker=ticker, interval=interval, output_path=str_data_in_file_name)
+        obj_download_data = downloadDataFin.DownloadFinancialData()
+        obj_download_data.setup_folders()
+        bln_new_data_available = obj_download_data.download_data(ticker=ticker, interval=interval)
         # if we don't have any new data there is nothing to compute
         if not bln_new_data_available:
             #  --> exit
@@ -122,16 +114,13 @@ def process_ticker(ticker):
         if not single_step:
             int_status = STATUS_ADD_PARAMETERS
 
-    # create folders if they don't exist
-    if not path.isdir("data_financial"):
-        # for data after we added financial parameters (csv)
-        mkdir("data_financial")
     # new data is available --> add financial data
     # Note: add financial also when training is expected --> because we need int_dataframe_length
     int_dataframe_length = 0
     if int_status == STATUS_ADD_PARAMETERS or int_status == STATUS_TRAINING:
         obj_fin_param = addFinancialParameters.FinancialParams()
-        # when we are in ADD_PARAMETERS or we have new data we force a add_financiar_data()
+        obj_fin_param.setup_folders()
+        # when we are in ADD_PARAMETERS or we have new data we force an add_financial_data()
         if int_status == STATUS_ADD_PARAMETERS or bln_new_data_available:
             int_dataframe_length = obj_fin_param.add_financial_data(ticker=ticker, arr_LOOKUP_STEP=FUTURE_STEPS)
         else:
@@ -140,39 +129,29 @@ def process_ticker(ticker):
         if not single_step:
             int_status = STATUS_TRAINING
 
-    # create folders if they don't exist
-    if not path.isdir("data_proc"):
-        # for data used for training
-        mkdir("data_proc")
-    # create folders if they don't exist
-    if not path.isdir("data_pred"):
-        # for data prediction
-        mkdir("data_pred")
-    # create folders if they don't exist
-    if not path.isdir("results"):
-        mkdir("results")
-    # create folders if they don't exist
-    if not path.isdir("logs"):
-        mkdir("logs")
-    # create folders if they don't exist
-    if not path.isdir("scaler"):
-        mkdir("scaler")
-
-    #intDataFrameLength = 2456
     if int_status == STATUS_TRAINING:
 
-        #int_offset = int(int_dataframe_length / 2)       # 1940
-        int_offset = int_dataframe_length - 50
+        int_offset = int_dataframe_length - 20      # process only 6 iterations
+        #int_offset = int_dataframe_length - 50      # process only 36 iterations
         #int_offset = int_dataframe_length - 200
         #int_offset = int_dataframe_length - 300
         #int_offset = int_dataframe_length - 500
+        #int_offset = int(int_dataframe_length / 2)       # 1940
+
+        # minimum length is 14 so we force to 16+
+        if int_offset < 16:
+            int_offset = 16
 
         int_testing_length = int_dataframe_length - int_offset
-        # int_testing_length = 2454 - int_offset
 
         # default we process all data
         bln_process_only_new_data = False
         str_date_last = ''
+
+        # create folders if they don't exist
+        if not path.isdir(FOLDER_NAME_FOR_DATA_PREDICTIONS):
+            # for data input (csv)
+            mkdir(FOLDER_NAME_FOR_DATA_PREDICTIONS)
 
         for network in NETWORK_LEN:
             for neurons in NEURONS:
@@ -183,7 +162,7 @@ def process_ticker(ticker):
                                 str_file_name = f"{ticker}-seq-{network}-lookup-{future_steps}-layers-{n_layers}-units-{neurons}-dropout-{dropout}"
                                 if bidirectional:
                                     str_file_name += "-b"
-                                str_file_name = path.join('data_pred', f'{str_file_name}_pred.csv')
+                                str_file_name = path.join(FOLDER_NAME_FOR_DATA_PREDICTIONS, f'{str_file_name}_pred.csv')
                                 # check if file exist
                                 if path.isfile(str_file_name):
                                     # record last date
@@ -220,6 +199,7 @@ def process_ticker(ticker):
                                             TESING_LENGHT = 3 * future_steps
                                             # in the overlap process test set is increased by network
                                             obj_process_data = preProcessData.ProcessData()
+                                            obj_process_data.setup_folders()
 
                                             if bln_process_only_new_data and not bln_matching_date:
                                                 # this is the skip path
@@ -232,6 +212,7 @@ def process_ticker(ticker):
                                                 obj_process_data.process_split_data_by_index(ticker, index=int_index, overlap=network, training_length=TRAINING_LENGTH, testing_length=TESING_LENGHT)
 
                                                 obj_training = trainLSTM.ML()
+                                                obj_training.setup_folders()
                                                 obj_testing = testLSTM.ML()
 
                                                 # NOTE: the testing set is limited inside process_split_data_by_index() to 2 * future_steps
@@ -254,13 +235,9 @@ def process_ticker(ticker):
         if not single_step:
             int_status = STATUS_MERGE_DATA
 
-    # create folders if they don't exist
-    if not path.isdir("data_final"):
-        mkdir("data_final")
     if int_status == STATUS_MERGE_DATA:
-
         obj_data_merger = dataMerger.Merge()
-
+        obj_data_merger.setup_folders()
         for network in NETWORK_LEN:
             for neurons in NEURONS:
                 for dropout in DROPOUT:
@@ -271,24 +248,19 @@ def process_ticker(ticker):
                                 if bidirectional:
                                     str_file_name += "-b"
                                 # combine data
-                                str_input_file_name = path.join('data_pred', f'{str_file_name}_pred.csv')
-                                #strInputFileName = path.join('data_proc', f'output_pred_{str_file_name}.csv')
-                                str_output_file_name = path.join('data_final', f'{str_file_name}.csv')
-                                obj_data_merger.merge_data(ticker=ticker, future_steps=future_steps, input_path=str_data_in_file_name, processed_path=str_input_file_name, output_path=str_output_file_name)
+                                obj_data_merger.merge_data(ticker=ticker, future_steps=future_steps, str_file_name=str_file_name)
 
-    #    for future_steps in FUTURE_STEPS:
-    #        #strPathName = 'output_pred_' + str(future_steps) + '.csv'
-    #        strFileName = path.join('data_proc', f'output_pred_{future_steps}.csv')
-    #        objDataMerger.merge_data(ticker=ticker, future_steps=future_steps, input_path=strFileName)
-
+        #    for future_steps in FUTURE_STEPS:
+        #        #strPathName = 'output_pred_' + str(future_steps) + '.csv'
+        #        strFileName = path.join(FOLDER_NAME_FOR_DATA_PROCESSED, f'output_pred_{future_steps}.csv')
+        #        objDataMerger.merge_data(ticker=ticker, future_steps=future_steps, input_path=strFileName)
 
         if not single_step:
             int_status = STATUS_BUILD_CHART
 
-    if not path.isdir("web"):
-        mkdir("web")
     if int_status == STATUS_BUILD_CHART:
-        objChart = buildChart.Chart()
+        obj_chart = buildChart.Chart()
+        obj_chart.setup_folders()
         last_close = 0
         pred_high = 0
         pred_low = 0
@@ -302,24 +274,19 @@ def process_ticker(ticker):
                                 str_file_name = f"{ticker}-seq-{network}-lookup-{future_steps}-layers-{n_layers}-units-{neurons}-dropout-{dropout}"
                                 if bidirectional:
                                     str_file_name += "-b"
-                                #strInputFileName = path.join('data_proc', f'final_{file_name}.csv')
-                                str_input_file_name = path.join('data_final', f'{str_file_name}.csv')
+                                str_input_file_name = path.join(FOLDER_NAME_FOR_DATA_FINAL, f'{str_file_name}.csv')
                                 # generate charts
-                                last_close, pred_high, pred_low = objChart.generate_chart(ticker=ticker, future_steps=future_steps, blnLive=False, input_path=str_input_file_name, folder_name=str_file_name)
-
-    #    for future_steps in FUTURE_STEPS:
-    #        objChart.generate_chart(ticker=ticker, future_steps=future_steps, blnLive=False)
+                                last_close, pred_high, pred_low = obj_chart.generate_chart(ticker=ticker, future_steps=future_steps, bln_live=False, input_path=str_input_file_name, folder_name=str_file_name)
 
         # save to txt file (for web page)
         # ticker, last_close, pred_high, pred_low
-        str_output_file_name = path.join('web', 'data.txt')
+        str_output_file_name = path.join(FOLDER_NAME_FOR_WEB, 'data.txt')
         obj_file = open(str_output_file_name, 'a')
         obj_file.write(f'{ticker},{last_close:.2f},{pred_high:.2f},{pred_low:.2f}\n')
         obj_file.close()
 
         if not single_step:
             int_status = STATUS_FINISHED
-
 
 
 def main():
@@ -353,7 +320,7 @@ def main():
     tickers = ['VOO']
 
     # check if destination folder exist
-    strPathDestinationFile = path.join('web', 'data.txt')
+    strPathDestinationFile = path.join(FOLDER_NAME_FOR_WEB, 'data.txt')
     if path.isfile(strPathDestinationFile):
         # delete the file (we fill in the data, one row at a time in function process_ticker())
         remove(strPathDestinationFile)
@@ -365,12 +332,13 @@ def main():
         process_ticker(ticker=ticker)
 
     if False:
-        strPathDestinationPath = 'c:\\inetpub\\wwwroot\\'
-        strPathSourceFile = path.join('web','data.txt')
-        if path.isfile(strPathSourceFile):
+        str_path_destination_path = 'c:\\inetpub\\wwwroot\\'
+        str_path_source_file = path.join(FOLDER_NAME_FOR_WEB,'data.txt')
+        if path.isfile(str_path_source_file):
             # source file exist
-            filePath = copy(strPathSourceFile, strPathDestinationPath)
-            print(filePath)
+            file_path = copy(str_path_source_file, str_path_destination_path)
+            print(file_path)
+
 
 if __name__ == "__main__":
     # this is required to fix some issues when script is called from script.

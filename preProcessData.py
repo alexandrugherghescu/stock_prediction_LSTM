@@ -2,11 +2,26 @@
 import pandas as pd
 
 from os import path
-
+from os import mkdir
+from commonResources import *
 
 class ProcessData:
 
-    #
+
+    def setup_folders(self):
+        """
+        Setup folder data_in for download (if not already available)
+        Params:
+            None
+        Out:
+            None
+        """
+        # create folders if they don't exist
+        if not path.isdir(FOLDER_NAME_FOR_DATA_PROCESSED):
+            # for data input (csv)
+            mkdir(FOLDER_NAME_FOR_DATA_PROCESSED)
+
+
     def process_split_data(self, ticker, test_size=0.2):
         """
         Loads data from CSV file and split into Train / Test set.
@@ -19,9 +34,9 @@ class ProcessData:
         """
         #
         # load it from data/ticker_param.csv
-        str_file_name_in = path.join('data_financial', f'{ticker}_param.csv')
-        str_file_name_train = path.join('data_proc', f'{ticker}_train.csv')
-        str_file_name_test = path.join('data_proc', f'{ticker}_test.csv')
+        str_file_name_in = path.join(FOLDER_NAME_FOR_DATA_FINANCIAL, f'{ticker}_param.csv')
+        str_file_name_train = path.join(FOLDER_NAME_FOR_DATA_PROCESSED, f'{ticker}_train.csv')
+        str_file_name_test = path.join(FOLDER_NAME_FOR_DATA_PROCESSED, f'{ticker}_test.csv')
         df = pd.read_csv(str_file_name_in, sep=',')
 
         # split the dataset into training & testing sets by date (not randomly splitting)
@@ -30,6 +45,7 @@ class ProcessData:
         test = df[train_samples:]
         train.to_csv(str_file_name_train, index=False)
         test.to_csv(str_file_name_test, index=False)
+
 
     def process_split_data_by_index(self, ticker, index=1, overlap=1, training_length=0, testing_length=0):
         """
@@ -46,9 +62,9 @@ class ProcessData:
         """
         #
         # load it from data/ticker_param.csv
-        str_file_name_in = path.join('data_financial', f'{ticker}_param.csv')
-        str_file_name_train = path.join('data_proc', f'{ticker}_train.csv')
-        str_file_name_test = path.join('data_proc', f'{ticker}_test.csv')
+        str_file_name_in = path.join(FOLDER_NAME_FOR_DATA_FINANCIAL, f'{ticker}_param.csv')
+        str_file_name_train = path.join(FOLDER_NAME_FOR_DATA_PROCESSED, f'{ticker}_train.csv')
+        str_file_name_test = path.join(FOLDER_NAME_FOR_DATA_PROCESSED, f'{ticker}_test.csv')
         df = pd.read_csv(str_file_name_in, sep=',')
 
         # split the dataset into training & testing sets by date (not randomly splitting)
@@ -65,13 +81,14 @@ class ProcessData:
         train.to_csv(str_file_name_train, index=False)
         test.to_csv(str_file_name_test, index=False)
 
+
     def get_date_at_index(self, ticker, index=1, overlap=1, training_length=0, testing_length=0):
         """
         Loads data from CSV file - using index
         Params:
             ticker (str): the ticker you want to load, examples include AAPL, TESL, etc.
             index (int): number where we stop the training (index in buffer)
-            overlap (int): how many samples we overlap between train and testset (due to network length).
+            overlap (int): how many samples we overlap between train and test set (due to network length).
             training_length (int): how many samples is the training set
             testing_length (int): how many samples is the testing set
         Out:
@@ -79,7 +96,7 @@ class ProcessData:
         """
         #
         # load it from data/ticker_param.csv
-        str_file_name_in = path.join('data_financial', f'{ticker}_param.csv')
+        str_file_name_in = path.join(FOLDER_NAME_FOR_DATA_FINANCIAL, f'{ticker}_param.csv')
         df = pd.read_csv(str_file_name_in, sep=',')
         # split the dataset into training & testing sets by date (not randomly splitting)
         train_samples = int(index)

@@ -7,12 +7,12 @@ from tensorflow.keras.layers import LSTM, Dense, Dropout, Bidirectional, Activat
 from tensorflow.keras.models import Sequential
 from os import path
 from os import remove
-#from collections import deque
+from commonResources import *
 from pathlib import Path
-#from sklearn import preprocessing
 from joblib import dump, load
 
 class ML:
+
 
     def create_model(self, sequence_length, n_features, units=256, cell=LSTM, n_layers=2, dropout=0.3, loss="mean_absolute_error", optimizer="rmsprop", bidirectional=False):
         model = Sequential()
@@ -42,6 +42,7 @@ class ML:
         model.compile(loss=loss, metrics=["mean_absolute_error"], optimizer=optimizer, run_eagerly=True)
         return model
 
+
     def predict(self, model, data, scale, scaler):
         # expand dimension
         last_sequence = np.expand_dims(data, axis=0)
@@ -55,6 +56,7 @@ class ML:
         else:
             predicted_price = prediction[0][0]
         return predicted_price
+
 
     def prediction_to_csv(self, ticker, sequence_length=50, future_steps=24, neurons=256, network_layers=3, drop_out=0.4, bidirectional=False, test_size=0.2, epoch=1, FEATURE_COLUMNS=[], scale=False, MINMAX_COLUMNS=[], STANDARD_COLUMNS=[]):
         # Window size or the sequence length
@@ -86,7 +88,7 @@ class ML:
             model_name += "-b"
 
         # load the data
-        str_file_name = path.join('data_proc', f'{ticker}_test.csv')
+        str_file_name = path.join(FOLDER_NAME_FOR_DATA_PROCESSED, f'{ticker}_test.csv')
         df_test = pd.read_csv(str_file_name, sep=',')
         # copy data where we append results as a column
         df_out = df_test.copy(deep=True)
@@ -105,7 +107,7 @@ class ML:
                             dropout=DROPOUT, optimizer=OPTIMIZER, bidirectional=BIDIRECTIONAL)
 
         # load optimal model weights from results folder
-        model_path = path.join("results", model_name) + ".h5"
+        model_path = path.join(FOLDER_NAME_FOR_RESULTS, model_name) + ".h5"
         model.load_weights(model_path)
 
         # select only columns=FEATURES last 20%
@@ -147,6 +149,7 @@ class ML:
         #print(model.summary())
         print("***************************************************************")
 
+
     def last_prediction_from_train_data(self, ticker, sequence_length=50, future_steps=24, neurons=256, network_layers=3, drop_out=0.4, bidirectional=False, FEATURE_COLUMNS=[], scale=False):
         # Window size or the sequence length
         INPUT_WINDOW_SIZE = sequence_length
@@ -177,7 +180,7 @@ class ML:
             model_name += "-b"
 
         # load the data
-        str_file_name = path.join('data_proc', f'{ticker}_test.csv')
+        str_file_name = path.join(FOLDER_NAME_FOR_DATA_PROCESSED, f'{ticker}_test.csv')
         df_test = pd.read_csv(str_file_name, sep=',')
         # copy data where we append results as a column
         str_date_last = df_test['Date'].iloc[-1]
@@ -189,7 +192,7 @@ class ML:
 
         if scale:
             # load scaler
-            str_file_name = path.join('scaler', f'{model_name}_scalerX.bin')
+            str_file_name = path.join(FOLDER_NAME_FOR_SCALER, f'{model_name}_scalerX.bin')
             column_scaler = load(str_file_name)
             # scale the data (prices) from 0 to 1
             for column in FEATURE_COLUMNS:
@@ -201,7 +204,7 @@ class ML:
                             dropout=DROPOUT, optimizer=OPTIMIZER, bidirectional=BIDIRECTIONAL)
 
         # load optimal model weights from results folder
-        model_path = path.join("results", model_name) + ".h5"
+        model_path = path.join(FOLDER_NAME_FOR_RESULTS, model_name) + ".h5"
         model.load_weights(model_path)
 
         # select only columns=FEATURES last 20%
@@ -209,7 +212,7 @@ class ML:
         # remove NANs
         df_test.dropna(inplace=True)
         # load scaler
-        str_file_name = path.join('scaler', f'{model_name}_scalery_{LOOKUP_STEP}.bin')
+        str_file_name = path.join(FOLDER_NAME_FOR_SCALER, f'{model_name}_scalery_{LOOKUP_STEP}.bin')
         scaler = load(str_file_name)
         #
         data = df_test.tail(INPUT_WINDOW_SIZE)

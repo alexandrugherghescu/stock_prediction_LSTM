@@ -7,17 +7,21 @@ from tensorflow.keras.layers import LSTM, Dense, Dropout, Bidirectional, Activat
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.utils import plot_model
 from os import path
+from os import mkdir
+from commonResources import *
 from collections import deque
 from sklearn import preprocessing
 from joblib import dump, load
 
 
 class ML:
+
     # Implement callback function to stop training prematurely
     mean_absolute_error_last = 1000.0
     mean_absolute_error_counter = 0
     return_epochs = 0
     exit_if_no_improvement_for = 30
+
 
     class MyCallback(Callback):
 
@@ -38,6 +42,29 @@ class ML:
 
     # Instantiate a callback object
     callbacks = MyCallback()
+
+
+    def setup_folders(self):
+        """
+        Setup folder data_in for download (if not already available)
+        Params:
+            None
+        Out:
+            None
+        """
+        # create folders if they don't exist
+        if not path.isdir(FOLDER_NAME_FOR_RESULTS):
+            # for data input (csv)
+            mkdir(FOLDER_NAME_FOR_RESULTS)
+        # create folders if they don't exist
+        if not path.isdir(FOLDER_NAME_FOR_LOGS):
+            # for data input (csv)
+            mkdir(FOLDER_NAME_FOR_LOGS)
+        # create folders if they don't exist
+        if not path.isdir(FOLDER_NAME_FOR_SCALER):
+            # for data input (csv)
+            mkdir(FOLDER_NAME_FOR_SCALER)
+
 
     def create_model(self, sequence_length, n_features, units=256, cell=LSTM, n_layers=2, dropout=0.3, loss="mean_absolute_error", optimizer="rmsprop", bidirectional=False):
         model = Sequential()
@@ -66,6 +93,7 @@ class ML:
         model.add(Dense(1, activation="linear"))
         model.compile(loss=loss, metrics=["mean_absolute_error"], optimizer=optimizer, run_eagerly=True)
         return model
+
 
     def train_model(self, ticker, epochs_start=500, epochs_retrain=2, sequence_length=50, future_steps=24, neurons=256, network_layers=3, drop_out=0.4, bidirectional=False, FEATURE_COLUMNS=[], scale=False, MINMAX_COLUMNS=[], STANDARD_COLUMNS=[], testing_lenght=0, exit_if_no_improvement_for=30, allow_model_loading=True):
         # Window size or the sequence length
@@ -96,9 +124,9 @@ class ML:
 
         # load the data
         # load it from data/ticker_param.csv
-        str_file_name = path.join('data_proc', f'{ticker}_train.csv')
+        str_file_name = path.join(FOLDER_NAME_FOR_DATA_PROCESSED, f'{ticker}_train.csv')
         df_train = pd.read_csv(str_file_name, sep=',')
-        str_file_name = path.join('data_proc', f'{ticker}_test.csv')
+        str_file_name = path.join(FOLDER_NAME_FOR_DATA_PROCESSED, f'{ticker}_test.csv')
         df_test = pd.read_csv(str_file_name, sep=',')
         # get last date to generate training model with last data add in name
         str_date_last = df_test['Date'].iloc[-1]
@@ -146,7 +174,7 @@ class ML:
                 pd.options.mode.chained_assignment = 'warn'  # default='warn'
                 column_scaler[column] = scaler
             # save the scaler
-            str_file_name = path.join('scaler', f'{model_name}_scalerX.bin')
+            str_file_name = path.join(FOLDER_NAME_FOR_SCALER, f'{model_name}_scalerX.bin')
             dump(column_scaler, str_file_name, compress=True)
             # scale Y data
             scaler = preprocessing.MinMaxScaler()
@@ -155,7 +183,7 @@ class ML:
             df_test_y[Y_COLUMN_NAME] = scaler.transform(np.expand_dims(df_test_y[Y_COLUMN_NAME].values, axis=1))
             pd.options.mode.chained_assignment = 'warn'  # default='warn'
             # save the scaler
-            str_file_name = path.join('scaler', f'{model_name}_scalery_{LOOKUP_STEP}.bin')
+            str_file_name = path.join(FOLDER_NAME_FOR_SCALER, f'{model_name}_scalery_{LOOKUP_STEP}.bin')
             dump(scaler, str_file_name, compress=True)
 
         sequence_data_train = []
@@ -196,13 +224,13 @@ class ML:
                                   dropout=DROPOUT, optimizer=OPTIMIZER, bidirectional=BIDIRECTIONAL)
 
         # some tensorflow callbacks
-        checkpointer = ModelCheckpoint(path.join("results", model_name + ".h5"), save_weights_only=True, save_best_only=True, verbose=1)
-        tensorboard = TensorBoard(log_dir=path.join("logs", model_name))
+        checkpointer = ModelCheckpoint(path.join(FOLDER_NAME_FOR_RESULTS, model_name + ".h5"), save_weights_only=True, save_best_only=True, verbose=1)
+        tensorboard = TensorBoard(log_dir=path.join(FOLDER_NAME_FOR_LOGS, model_name))
 
         # train the model and save the weights whenever we see improvement
-        if path.isdir("results"):
+        if path.isdir(FOLDER_NAME_FOR_RESULTS):
             # load optimal model weights from results folder
-            model_path = path.join("results", model_name) + ".h5"
+            model_path = path.join(FOLDER_NAME_FOR_RESULTS, model_name) + ".h5"
             if allow_model_loading and path.exists(model_path):
                 # if file exist
                 model.load_weights(model_path)

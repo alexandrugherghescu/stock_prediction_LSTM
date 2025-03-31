@@ -1,12 +1,28 @@
 #!/usr/local/bin/python3
+
 import pandas as pd
 import pandas_ta as ta
 from os import path
+from os import mkdir
+from commonResources import *
 
 
 class FinancialParams:
 
-    #
+
+    def setup_folders(self):
+        """
+        Setup folder data_in for download (if not already available)
+        Params:
+            None
+        Out:
+            None
+        """
+        # create folders if they don't exist
+        if not path.isdir(FOLDER_NAME_FOR_DATA_FINANCIAL):
+            # for data input (csv)
+            mkdir(FOLDER_NAME_FOR_DATA_FINANCIAL)
+
 
     def add_financial_data(self, ticker, arr_LOOKUP_STEP=[12, 24, 48, 64, 96, 144, 192]):
         """
@@ -19,8 +35,8 @@ class FinancialParams:
             return length of the dataset (to be used on next stage)
         """
 
-        str_file_name_in = path.join('data_in', f'{ticker}.csv')
-        str_file_name_out = path.join('data_financial', f'{ticker}_param.csv')
+        str_file_name_in = path.join(FOLDER_NAME_FOR_DATA_IN, f'{ticker}.csv')
+        str_file_name_out = path.join(FOLDER_NAME_FOR_DATA_FINANCIAL, f'{ticker}_param.csv')
 
         obj_data_frame = pd.read_csv(str_file_name_in, sep=',')
         # add MOMentum
@@ -74,6 +90,7 @@ class FinancialParams:
         obj_data_frame.to_csv(str_file_name_out, index=False)
         return len(obj_data_frame)
 
+
     def get_dataframe_length(self, ticker):
         """
         Return the length of data_financial/<ticker>_param.csv .
@@ -83,6 +100,6 @@ class FinancialParams:
             return length of the dataset (to be used on next stage)
         """
 
-        str_file_name_out = path.join('data_financial', f'{ticker}_param.csv')
+        str_file_name_out = path.join(FOLDER_NAME_FOR_DATA_FINANCIAL, f'{ticker}_param.csv')
         obj_data_frame = pd.read_csv(str_file_name_out, sep=',')
         return len(obj_data_frame)

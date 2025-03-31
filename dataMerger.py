@@ -1,62 +1,51 @@
 #!/usr/local/bin/python3
 # -*- coding: utf-8 -*-
-#from dataclasses import dataclass, field
-#from multiprocessing import cpu_count, Pool
-#from pathlib import Path
-#from time import perf_counter
-#from typing import List, Tuple
-#from warnings import simplefilter
 
-#import pandas as pd
-#from numpy import log10 as npLog10
-#from numpy import ndarray as npNdarray
-#from pandas.core.base import PandasObject
-
-#from pandas_ta import Category, Imports, version
-#from pandas_ta.candles.cdl_pattern import ALL_PATTERNS
-#from pandas_ta.candles import *
-#from pandas_ta.cycles import *
-#from pandas_ta.momentum import *
-from pandas_ta.overlap import *
-#from pandas_ta.performance import *
-#from pandas_ta.statistics import *
-#from pandas_ta.trend import *
-#from pandas_ta.volatility import *
-#from pandas_ta.volume import *
-#from pandas_ta.utils import *
-
-
-
-
-
-#import yfinance as yf
 import numpy as np
 import pandas as pd
-#import pandas_ta as ta
+
 
 from datetime import datetime
 from datetime import timedelta
+from pandas_ta.overlap import *
 from os import path
-from os import remove
+from os import mkdir
+from commonResources import *
 
 
 class Merge:
 
-    #
 
-    def merge_data(self, ticker, future_steps=5, input_path='', processed_path='', output_path=''):
+    def setup_folders(self):
+        """
+        Setup folder data_in for download (if not already available)
+        Params:
+            None
+        Out:
+            None
+        """
+        # create folders if they don't exist
+        if not path.isdir(FOLDER_NAME_FOR_DATA_FINAL):
+            # for data input (csv)
+            mkdir(FOLDER_NAME_FOR_DATA_FINAL)
+
+
+    def merge_data(self, ticker, future_steps=5, str_file_name=''):
         """
         Merge ticker with output_pred_X.csv.
         Params:
             ticker (str): the ticker you want to load, examples include AAPL, TESL, etc.
             future_steps (int): the prediction length
-            input_path (str): the input file that need to be merged
-            output_path (str): the output file that need to be merged
+            str_file_name (str): the root of file that need to be merged
         Out:
             ticker_pred_X.csv
         """
 
-        #strFileName = path.join('data_in', f'{ticker}.csv')
+        #
+        input_path = path.join(FOLDER_NAME_FOR_DATA_IN, f'{ticker}.csv')
+        processed_path = path.join(FOLDER_NAME_FOR_DATA_PREDICTIONS, f'{str_file_name}_pred.csv')
+        output_path = path.join(FOLDER_NAME_FOR_DATA_FINAL, f'{str_file_name}.csv')
+
         # load from CSVs
         obj_data_frame_input = pd.read_csv(input_path, sep=',')
         obj_data_frame = pd.read_csv(processed_path, sep=',')
@@ -64,12 +53,12 @@ class Merge:
         str_date_last = obj_data_frame['Date'].iloc[-1]
         dat_date_last = datetime.strptime(str_date_last, '%Y-%m-%d')        #  '%d/%m/%y %H:%M:%S'
         str_dic_date = []
-        for intA in range(future_steps):
-            dat_date = dat_date_last + timedelta(days=(intA+1))
+        for int_a in range(future_steps):
+            dat_date = dat_date_last + timedelta(days=(int_a+1))
             str_dic_date.append(datetime.strftime(dat_date, '%Y-%m-%d'))
-        for strDate in str_dic_date:
+        for str_date in str_dic_date:
             # ('Date,Loss,MAE,Epochs,Prediction\n')
-            obj_data_frame.loc[len(obj_data_frame.index)] = [strDate, np.nan, np.nan, np.nan, np.nan]
+            obj_data_frame.loc[len(obj_data_frame.index)] = [str_date, np.nan, np.nan, np.nan, np.nan]
         # shift forwards
         obj_data_frame['Prediction'] = obj_data_frame['Prediction'].shift(future_steps)
         # merge frames
@@ -122,5 +111,5 @@ class Merge:
                     obj_data_frame_input.at[index, 'PredHigh'] = obj_data_frame_input['Prediction'].values.item(index)
 
         # save df
-    #    strFileName = path.join('data_proc', f'{ticker}_{future_steps}_final.csv')
+    #    strFileName = path.join(FOLDER_NAME_FOR_DATA_PROCESSED, f'{ticker}_{future_steps}_final.csv')
         obj_data_frame_input.to_csv(output_path, index=False)
