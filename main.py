@@ -17,6 +17,10 @@ from os import getcwd
 from os import chdir
 from os import remove
 
+from shutil import copy
+from datetime import datetime
+
+VERSION_NUMBER = '0.0.7'
 
 
 def process_ticker(ticker):
@@ -28,13 +32,6 @@ def process_ticker(ticker):
         generate png-s for 1,3,6,12,24 months in web folder
     """
 
-    # constants used to define the stage of the script
-    STATUS_DOWNLOAD = 1             # download financial info from yahoo (downloadDataFin.py)
-    STATUS_ADD_PARAMETERS = 2       # add financial parameters (addFinancialParameters.py)
-    STATUS_TRAINING = 3             # train the network
-    STATUS_MERGE_DATA = 4           # merge the data with old processed data
-    STATUS_BUILD_CHART = 5          # build charts will past results
-    STATUS_FINISHED = 6             # finished script
     # we start with download data
     int_status = STATUS_DOWNLOAD
     int_status = STATUS_ADD_PARAMETERS
@@ -46,27 +43,16 @@ def process_ticker(ticker):
     single_step = True
     # single_step = False
 
-    # constants used to define the forcast interval
-    FORECAST_TEST = 0               # used for testing (when we optimize parameters)
-    FORECAST_5_DAYS = 1             # used for 5 days forecast
-    FORECAST_10_DAYS = 2            # used for 10 days forecast
     # we forecast for 5 days
     int_forecast = FORECAST_5_DAYS
 
     print('Start')
 
-
     # ticker : used for DOWNLOAD stage
     # interval for data download: used for DOWNLOAD stage
     interval = '1d'
 
-    # features to use
-    FEATURE_COLUMNS = ['Open', 'High', 'Low', 'Close', 'Volume', 'MOM_1', 'MOM_3', 'MOM_5', 'MOM_10', 'MOM_20', 'ROC_2', 'ROC_5', 'ROC_10', 'ROC_20', 'ROC_40', 'EMA_5', 'EMA_10', 'EMA_20', 'EMA_40', 'STDEV_3', 'STDEV_5', 'STDEV_8',
-                       'STDEV_15', 'dMOM_1', 'dMOM_3', 'dMOM_5', 'dMOM_10', 'dMOM_20', 'dROC_2', 'dROC_5', 'dROC_10', 'dROC_20', 'dROC_40', 'dEMA_5', 'dEMA_10', 'dEMA_20', 'dEMA_40', 'dSTDEV_3', 'dSTDEV_5', 'dSTDEV_8', 'dSTDEV_15']
-    MINMAX_COLUMNS = ['Open', 'High', 'Low', 'Close', 'Volume', 'EMA_5', 'EMA_10', 'EMA_20', 'EMA_40', 'STDEV_3', 'STDEV_5', 'STDEV_8', 'STDEV_15']
-    STANDARD_COLUMNS = ['MOM_1', 'MOM_3', 'MOM_5', 'MOM_10', 'MOM_20', 'ROC_2', 'ROC_5', 'ROC_10', 'ROC_20', 'ROC_40', 'dMOM_1', 'dMOM_3', 'dMOM_5', 'dMOM_10', 'dMOM_20', 'dROC_2', 'dROC_5', 'dROC_10', 'dROC_20', 'dROC_40',
-                        'dEMA_5', 'dEMA_10', 'dEMA_20', 'dEMA_40', 'dSTDEV_3', 'dSTDEV_5', 'dSTDEV_8', 'dSTDEV_15']
-
+    # training parameters
     EPOCHS = [500]  # [100,200,300,400,500]
     if int_forecast == FORECAST_5_DAYS:
         NETWORK_LEN = [48]
@@ -95,7 +81,7 @@ def process_ticker(ticker):
     SCALE = True
     TRAINING_LENGTH = 250       # one year
 
-    # create TEMP folder if they don't exist
+    # create TEMP folder if required
     if not path.isdir("temp"):
         # for temporary use
         mkdir("temp")
@@ -250,11 +236,6 @@ def process_ticker(ticker):
                                 # combine data
                                 obj_data_merger.merge_data(ticker=ticker, future_steps=future_steps, str_file_name=str_file_name)
 
-        #    for future_steps in FUTURE_STEPS:
-        #        #strPathName = 'output_pred_' + str(future_steps) + '.csv'
-        #        strFileName = path.join(FOLDER_NAME_FOR_DATA_PROCESSED, f'output_pred_{future_steps}.csv')
-        #        objDataMerger.merge_data(ticker=ticker, future_steps=future_steps, input_path=strFileName)
-
         if not single_step:
             int_status = STATUS_BUILD_CHART
 
@@ -288,6 +269,43 @@ def process_ticker(ticker):
         if not single_step:
             int_status = STATUS_FINISHED
 
+    # this code assumes: macOS + homebrew + nginx + php
+    str_path_destination_folder = '/opt/homebrew/var/www'
+    # copy data.txt
+    if path.isdir(str_path_destination_folder):
+        str_path_source = path.join('web', 'data.txt')
+        # copy files
+        str_file_path = copy(str_path_source, str_path_destination_folder)
+        print(str_file_path)
+        # write timestamp
+        str_output_file_name = path.join(str_path_destination_folder, 'timestamp.txt')
+        obj_file = open(str_output_file_name, 'w')
+        dat_current_datetime = datetime.now()
+        obj_file.write(str(dat_current_datetime))
+        obj_file.close()
+
+    # copy pictures
+    str_path_destination_folder = path.join(str_path_destination_folder, 'img')
+    # check if destination folder exist
+    if path.isdir(str_path_destination_folder):
+        str_path_destination_folder = path.join(str_path_destination_folder, ticker)
+        if not path.isdir(str_path_destination_folder):
+            mkdir(str_path_destination_folder)
+        # SRC
+        #'/web/AAPL-seq-48-lookup-5-layers-3-units-256-dropout-0.4-b/AAPL_5_20.png'
+        #'/web/AAPL-seq-48-lookup-5-layers-3-units-256-dropout-0.4-b/AAPL_5_60.png'
+        #'/web/AAPL-seq-48-lookup-5-layers-3-units-256-dropout-0.4-b/AAPL_5_120.png'
+        #'/web/AAPL-seq-48-lookup-5-layers-3-units-256-dropout-0.4-b/AAPL_5_250.png'
+        #'/web/AAPL-seq-48-lookup-5-layers-3-units-256-dropout-0.4-b/AAPL_5_500.png'
+        lst_chart_lenght = [20, 60, 120, 250, 500]
+        for int_chart_length in lst_chart_lenght:
+            str_folder_name = path.join('web', f'{ticker}-seq-48-lookup-5-layers-3-units-256-dropout-0.4-b')
+            str_path_source = path.join(str_folder_name, f'{ticker}_5_{int_chart_length}.png')
+            # check if source file exist
+            if path.isfile(str_path_source):
+                # copy files
+                str_file_path = copy(str_path_source, str_path_destination_folder)
+                print(str_file_path)
 
 def main():
 
@@ -315,15 +333,15 @@ def main():
     # VGTSX - Vanguard Total Intl Stock Index Trust - 0.06%
     # ? - BNY Mellon EB Global Real Estate Sec II - 0.54%
 
-    tickers = ['VFFSX', 'VEXMX', 'AAPL']
+    tickers = ['VFFSX', 'VEXMX', 'AAPL', 'ADI', 'VOO']
     tickers = ['ADI']
     tickers = ['VOO']
 
     # check if destination folder exist
-    strPathDestinationFile = path.join(FOLDER_NAME_FOR_WEB, 'data.txt')
-    if path.isfile(strPathDestinationFile):
+    str_path_destination_file = path.join(FOLDER_NAME_FOR_WEB, 'data.txt')
+    if path.isfile(str_path_destination_file):
         # delete the file (we fill in the data, one row at a time in function process_ticker())
-        remove(strPathDestinationFile)
+        remove(str_path_destination_file)
 
     for ticker in tickers:
         print('************************************************************************************************************')
@@ -341,13 +359,15 @@ def main():
 
 
 if __name__ == "__main__":
+    # print version
+    print('stock_prediction_LSTM ver.' + VERSION_NUMBER)
     # this is required to fix some issues when script is called from script.
     print('current dir before: '+ getcwd())
     str_script_folder = path.dirname(path.realpath(__file__))
     str_script_folder_upper = path.split(str_script_folder)[0]
     # change current folder to file script folder
     chdir(str_script_folder_upper)
-    # create folders if don't exist
+    # create folders if needed
     if not path.isdir("data"):
         # for data input (csv)
         mkdir("data")
